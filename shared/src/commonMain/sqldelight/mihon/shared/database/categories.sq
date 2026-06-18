@@ -1,0 +1,36 @@
+-- Categorías de la biblioteca (estanterías). Un manga puede estar en varias (N a N).
+-- magic_word: si no está vacía, la categoría es PRIVADA (oculta hasta escribir esa palabra).
+CREATE TABLE categories(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    sort INTEGER NOT NULL DEFAULT 0,
+    magic_word TEXT NOT NULL DEFAULT ''
+);
+
+getCategories:
+SELECT id, name, sort, magic_word
+FROM categories
+ORDER BY sort ASC, id ASC;
+
+insertCategory:
+INSERT INTO categories(name, sort)
+VALUES (?, ?);
+
+renameCategory:
+UPDATE categories
+SET name = ?
+WHERE id = ?;
+
+setMagicWord:
+UPDATE categories
+SET magic_word = ?
+WHERE id = ?;
+
+setSort:
+UPDATE categories
+SET sort = ?
+WHERE id = ?;
+
+deleteCategory:
+DELETE FROM categories
+WHERE id = ?;

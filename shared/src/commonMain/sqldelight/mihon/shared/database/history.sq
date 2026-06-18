@@ -1,0 +1,23 @@
+-- Historial de lectura: un registro por manga con el último capítulo leído.
+CREATE TABLE history(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    manga_title TEXT NOT NULL,
+    thumbnail_url TEXT,
+    chapter_id TEXT NOT NULL,
+    chapter_name TEXT NOT NULL,
+    read_at INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id)
+);
+
+getHistory:
+SELECT *
+FROM history
+ORDER BY read_at DESC;
+
+upsertHistory:
+INSERT OR REPLACE INTO history(source_id, manga_id, manga_title, thumbnail_url, chapter_id, chapter_name, read_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteForManga:
+DELETE FROM history WHERE source_id = ? AND manga_id = ?;

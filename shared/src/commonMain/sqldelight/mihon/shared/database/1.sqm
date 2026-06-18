@@ -1,0 +1,11 @@
+-- Migración v1 → v2: añade la tabla de preferencias de lectura por manga.
+-- A partir de aquí, CADA cambio de esquema debe tener su archivo N.sqm para no perder datos.
+CREATE TABLE reading_prefs(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    color_filter INTEGER NOT NULL DEFAULT 0,
+    intensity REAL NOT NULL DEFAULT 1.0,
+    direction INTEGER NOT NULL DEFAULT 1,
+    mode INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(source_id, manga_id)
+);

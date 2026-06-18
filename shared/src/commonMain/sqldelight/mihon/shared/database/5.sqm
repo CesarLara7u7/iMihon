@@ -1,0 +1,3 @@
+-- Migración v5 → v6: estanterías privadas. Una categoría con `magic_word` no vacía es PRIVADA:
+-- se oculta de la biblioteca y solo se revela al escribir esa palabra en el buscador.
+ALTER TABLE categories ADD COLUMN magic_word TEXT NOT NULL DEFAULT '';

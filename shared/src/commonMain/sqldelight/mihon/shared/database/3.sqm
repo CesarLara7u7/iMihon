@@ -1,0 +1,13 @@
+-- Migración v3 → v4: categorías/estanterías (relación N a N con la biblioteca).
+CREATE TABLE categories(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE manga_categories(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id, category_id)
+);

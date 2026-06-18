@@ -1,0 +1,39 @@
+import kotlin.Boolean;
+
+-- Progreso por capítulo: última página leída y si está leído (terminado).
+CREATE TABLE chapter_progress(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    chapter_id TEXT NOT NULL,
+    last_page INTEGER NOT NULL,
+    read INTEGER AS Boolean NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id, chapter_id)
+);
+
+forManga:
+SELECT chapter_id, last_page, read
+FROM chapter_progress
+WHERE source_id = ? AND manga_id = ?;
+
+forChapter:
+SELECT chapter_id, last_page, read
+FROM chapter_progress
+WHERE source_id = ? AND manga_id = ? AND chapter_id = ?;
+
+lastRead:
+SELECT chapter_id
+FROM chapter_progress
+WHERE source_id = ? AND manga_id = ?
+ORDER BY updated_at DESC
+LIMIT 1;
+
+upsert:
+INSERT OR REPLACE INTO chapter_progress(source_id, manga_id, chapter_id, last_page, read, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+clear:
+DELETE FROM chapter_progress WHERE source_id = ? AND manga_id = ? AND chapter_id = ?;
+
+clearForManga:
+DELETE FROM chapter_progress WHERE source_id = ? AND manga_id = ?;

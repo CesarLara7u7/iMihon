@@ -1,0 +1,26 @@
+-- Preferencias de lectura POR MANGA (filtro de color, intensidad, dirección, modo, páginas dobles).
+-- direction: 0 = izq→der, 1 = der→izq (RTL, por defecto en manga).
+-- mode: 0 = paginado, 1 = webtoon. color_filter: 0 none, 1 B/N, 2 sepia, 3 sepia suave.
+-- double_page: 0 = no, 1 = sí (las páginas anchas se leen como 2 mitades con acercamiento).
+CREATE TABLE reading_prefs(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    color_filter INTEGER NOT NULL DEFAULT 0,
+    intensity REAL NOT NULL DEFAULT 1.0,
+    direction INTEGER NOT NULL DEFAULT 1,
+    mode INTEGER NOT NULL DEFAULT 0,
+    double_page INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(source_id, manga_id)
+);
+
+getPrefs:
+SELECT color_filter, intensity, direction, mode, double_page
+FROM reading_prefs
+WHERE source_id = ? AND manga_id = ?;
+
+upsertPrefs:
+INSERT OR REPLACE INTO reading_prefs(source_id, manga_id, color_filter, intensity, direction, mode, double_page)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteForManga:
+DELETE FROM reading_prefs WHERE source_id = ? AND manga_id = ?;

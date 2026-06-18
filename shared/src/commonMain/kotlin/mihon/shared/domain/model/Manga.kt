@@ -1,0 +1,83 @@
+package mihon.shared.domain.model
+
+/**
+ * Portado de `tachiyomi.domain.manga.model.Manga` (Mihon).
+ * Se conservan los campos y los flags de capítulos; los tipos JVM/Compose
+ * (`@Immutable`, `Serializable`, `java.time.Instant`) se omiten o se adaptan a `Long`.
+ */
+data class Manga(
+    val id: Long,
+    val source: Long,
+    val favorite: Boolean,
+    val lastUpdate: Long,
+    val nextUpdate: Long,
+    val fetchInterval: Int,
+    val dateAdded: Long,
+    val viewerFlags: Long,
+    val chapterFlags: Long,
+    val coverLastModified: Long,
+    val url: String,
+    val title: String,
+    val artist: String?,
+    val author: String?,
+    val description: String?,
+    val genre: List<String>?,
+    val status: Long,
+    val thumbnailUrl: String?,
+    val updateStrategy: UpdateStrategy,
+    val initialized: Boolean,
+    val lastModifiedAt: Long,
+    val favoriteModifiedAt: Long?,
+    val version: Long,
+    val notes: String,
+) {
+    val sorting: Long get() = chapterFlags and CHAPTER_SORTING_MASK
+    val displayMode: Long get() = chapterFlags and CHAPTER_DISPLAY_MASK
+    val unreadFilterRaw: Long get() = chapterFlags and CHAPTER_UNREAD_MASK
+    val downloadedFilterRaw: Long get() = chapterFlags and CHAPTER_DOWNLOADED_MASK
+    val bookmarkedFilterRaw: Long get() = chapterFlags and CHAPTER_BOOKMARKED_MASK
+
+    val unreadFilter: TriState
+        get() = when (unreadFilterRaw) {
+            CHAPTER_SHOW_UNREAD -> TriState.ENABLED_IS
+            CHAPTER_SHOW_READ -> TriState.ENABLED_NOT
+            else -> TriState.DISABLED
+        }
+
+    companion object {
+        // Estados (espejo de SManga en Mihon)
+        const val UNKNOWN = 0L
+        const val ONGOING = 1L
+        const val COMPLETED = 2L
+        const val LICENSED = 3L
+        const val PUBLISHING_FINISHED = 4L
+        const val CANCELLED = 5L
+        const val ON_HIATUS = 6L
+
+        const val CHAPTER_SORT_DESC = 0x00000000L
+        const val CHAPTER_SORT_ASC = 0x00000001L
+        const val CHAPTER_SORT_DIR_MASK = 0x00000001L
+
+        const val CHAPTER_SHOW_UNREAD = 0x00000002L
+        const val CHAPTER_SHOW_READ = 0x00000004L
+        const val CHAPTER_UNREAD_MASK = 0x00000006L
+
+        const val CHAPTER_SHOW_DOWNLOADED = 0x00000008L
+        const val CHAPTER_SHOW_NOT_DOWNLOADED = 0x00000010L
+        const val CHAPTER_DOWNLOADED_MASK = 0x00000018L
+
+        const val CHAPTER_SHOW_BOOKMARKED = 0x00000020L
+        const val CHAPTER_SHOW_NOT_BOOKMARKED = 0x00000040L
+        const val CHAPTER_BOOKMARKED_MASK = 0x00000060L
+
+        const val CHAPTER_SORTING_SOURCE = 0x00000000L
+        const val CHAPTER_SORTING_NUMBER = 0x00000100L
+        const val CHAPTER_SORTING_UPLOAD_DATE = 0x00000200L
+        const val CHAPTER_SORTING_ALPHABET = 0x00000300L
+        const val CHAPTER_SORTING_MASK = 0x00000300L
+
+        const val CHAPTER_DISPLAY_NAME = 0x00000000L
+        const val CHAPTER_DISPLAY_NUMBER = 0x00100000L
+        const val CHAPTER_DISPLAY_MASK = 0x00100000L
+    }
+}

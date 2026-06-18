@@ -1,0 +1,18 @@
+-- Manga marcados manualmente como +18 por el usuario. Excluidos de Historial y Recientes.
+CREATE TABLE nsfw_manga(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    PRIMARY KEY(source_id, manga_id)
+);
+
+mark:
+INSERT OR IGNORE INTO nsfw_manga(source_id, manga_id) VALUES (?, ?);
+
+unmark:
+DELETE FROM nsfw_manga WHERE source_id = ? AND manga_id = ?;
+
+isNsfw:
+SELECT COUNT(*) FROM nsfw_manga WHERE source_id = ? AND manga_id = ?;
+
+all:
+SELECT source_id, manga_id FROM nsfw_manga;

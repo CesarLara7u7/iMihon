@@ -1,0 +1,27 @@
+-- Biblioteca local (favoritos). Sin servidor, la biblioteca vive en el dispositivo.
+CREATE TABLE favorites(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    thumbnail_url TEXT,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id)
+);
+
+getFavorites:
+SELECT *
+FROM favorites
+ORDER BY added_at DESC;
+
+isFavorite:
+SELECT count(*)
+FROM favorites
+WHERE source_id = ? AND manga_id = ?;
+
+addFavorite:
+INSERT OR REPLACE INTO favorites(source_id, manga_id, title, thumbnail_url, added_at)
+VALUES (?, ?, ?, ?, ?);
+
+removeFavorite:
+DELETE FROM favorites
+WHERE source_id = ? AND manga_id = ?;

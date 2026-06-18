@@ -1,0 +1,59 @@
+-- Descargas: un registro por capítulo descargado/encolado. Las páginas viven en disco
+-- (Documents/Downloads/...); aquí solo se guardan metadatos y el estado.
+-- status: 0 = en cola, 1 = descargando, 2 = completado, 3 = error.
+CREATE TABLE downloads(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    chapter_id TEXT NOT NULL,
+    manga_title TEXT NOT NULL,
+    thumbnail_url TEXT,
+    chapter_name TEXT NOT NULL,
+    total_pages INTEGER NOT NULL DEFAULT 0,
+    downloaded_pages INTEGER NOT NULL DEFAULT 0,
+    status INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id, chapter_id)
+);
+
+getAll:
+SELECT *
+FROM downloads
+ORDER BY created_at DESC;
+
+forManga:
+SELECT *
+FROM downloads
+WHERE source_id = ? AND manga_id = ?;
+
+getChapter:
+SELECT *
+FROM downloads
+WHERE source_id = ? AND manga_id = ? AND chapter_id = ?;
+
+upsert:
+INSERT OR REPLACE INTO downloads(
+    source_id, manga_id, chapter_id, manga_title, thumbnail_url, chapter_name,
+    total_pages, downloaded_pages, status, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateProgress:
+UPDATE downloads
+SET total_pages = ?, downloaded_pages = ?, status = ?
+WHERE source_id = ? AND manga_id = ? AND chapter_id = ?;
+
+deleteChapter:
+DELETE FROM downloads
+WHERE source_id = ? AND manga_id = ? AND chapter_id = ?;
+
+deleteForManga:
+DELETE FROM downloads
+WHERE source_id = ? AND manga_id = ?;
+
+deleteCompletedBefore:
+DELETE FROM downloads
+WHERE status = 2 AND created_at < ?;
+
+completedBefore:
+SELECT *
+FROM downloads
+WHERE status = 2 AND created_at < ?;

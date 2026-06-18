@@ -1,0 +1,6 @@
+-- Migración v7 → v8: manga marcados como +18 (excluidos de Historial y Recientes).
+CREATE TABLE nsfw_manga(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    PRIMARY KEY(source_id, manga_id)
+);

@@ -1,0 +1,50 @@
+-- Vínculos manga ↔ categoría (N a N). La portada/título salen de `favorites`.
+CREATE TABLE manga_categories(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id, category_id)
+);
+
+categoryIdsForManga:
+SELECT category_id
+FROM manga_categories
+WHERE source_id = ? AND manga_id = ?;
+
+allLinks:
+SELECT source_id, manga_id, category_id
+FROM manga_categories;
+
+addLink:
+INSERT OR IGNORE INTO manga_categories(source_id, manga_id, category_id)
+VALUES (?, ?, ?);
+
+removeLink:
+DELETE FROM manga_categories
+WHERE source_id = ? AND manga_id = ? AND category_id = ?;
+
+removeLinksForCategory:
+DELETE FROM manga_categories
+WHERE category_id = ?;
+
+removeLinksForManga:
+DELETE FROM manga_categories
+WHERE source_id = ? AND manga_id = ?;
+
+-- Manga de una categoría (join con favoritos para portada/título).
+favoritesInCategory:
+SELECT f.source_id, f.manga_id, f.title, f.thumbnail_url
+FROM favorites f
+JOIN manga_categories mc ON mc.source_id = f.source_id AND mc.manga_id = f.manga_id
+WHERE mc.category_id = ?
+ORDER BY f.added_at DESC;
+
+-- Favoritos que no están en ninguna categoría ("Sin categoría").
+uncategorizedFavorites:
+SELECT f.source_id, f.manga_id, f.title, f.thumbnail_url
+FROM favorites f
+WHERE NOT EXISTS (
+    SELECT 1 FROM manga_categories mc
+    WHERE mc.source_id = f.source_id AND mc.manga_id = f.manga_id
+)
+ORDER BY f.added_at DESC;

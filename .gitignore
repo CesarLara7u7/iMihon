@@ -1,0 +1,35 @@
+# ─── Gradle / Kotlin Multiplatform ───
+.gradle/
+build/
+**/build/
+local.properties
+captures/
+*.hprof
+
+# ─── Xcode / iOS ───
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ─── IntelliJ / Android Studio ───
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ─── Kotlin/Native ───
+.konan/
+konan/
+
+# ─── macOS ───
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Temporales / basura ───
+*.log
+probe*.bin

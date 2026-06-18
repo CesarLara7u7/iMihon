@@ -1,0 +1,10 @@
+-- Migración v6 → v7: tiempo de lectura por manga (para el estante "Tendencia").
+CREATE TABLE reading_time(
+    source_id TEXT NOT NULL,
+    manga_id TEXT NOT NULL,
+    manga_title TEXT NOT NULL,
+    thumbnail_url TEXT,
+    total_seconds INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY(source_id, manga_id)
+);
