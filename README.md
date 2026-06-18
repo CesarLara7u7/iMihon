@@ -1,79 +1,102 @@
-# Mihon iOS
+# iMihon
 
-Port de [Mihon](../mihon) (lector de manga Android) a iOS, reestructurado desde cero.
-**Estrategia:** KMP (lógica compartida) + SwiftUI nativo.
+Port nativo de [Mihon](../mihon) (lector de manga Android) a **iOS**, reescrito desde cero.
+**Arquitectura:** Kotlin Multiplatform (lógica compartida) + **SwiftUI** nativo.
+
+> **Sin servidor.** A diferencia del enfoque inicial (se evaluó y descartó un backend
+> Suwayomi/Tachidesk), la app consulta las **APIs de las fuentes directamente** desde el
+> módulo Kotlin. Las extensiones de Mihon son APKs de Android y no pueden ejecutarse en iOS,
+> así que cada fuente se **reimplementa de forma nativa**.
 
 ---
 
-## Estado actual: Fase 4 — Catálogo real vía backend Suwayomi ✅
+## Fuentes soportadas
 
-La pestaña **Explorar** muestra **fuentes y manga reales** servidos por un backend
-**Suwayomi-Server** (Tachidesk) que ejecuta las extensiones de Mihon. La app es su cliente
-**GraphQL** (`SuwayomiClient` sobre Ktor). Portadas reales vía `AsyncImage`.
+| Fuente | Acceso | Notas |
+|--------|--------|-------|
+| **MangaDex** | API JSON directa (`api.mangadex.org`) | Multi-idioma. UA neutro (su Cloudflare rechaza UA de navegador). |
+| **MANGA Plus** (Shueisha) | API oficial con `format=json` | Oficial y SFW. Imágenes cifradas con **XOR** (se descifran en cliente). Solo libera primeros/últimos capítulos. |
+| **Comick** | **WKWebView** (Cloudflare) | Capítulos completos, multi-idioma. Explorar + leer ✅; **búsqueda de texto no** (Cloudflare blinda `/api/search`). |
+| **MangaFire** | **WKWebView** (Cloudflare) | Token `vrf` capturado del propio sitio; imágenes **barajadas** (se des-barajan con Core Graphics). Con búsqueda. |
 
-Probado de extremo a extremo: app iOS → Kotlin (Ktor GraphQL) → Suwayomi (localhost:4567)
-→ extensión **MangaFire** → catálogo real (One Piece, Toriko, …).
+### Cómo se sortea Cloudflare (Comick / MangaFire)
+La pila TLS nativa (URLSession/Ktor) recibe el reto "Just a moment" de Cloudflare. La solución
+es un **`WKWebView` oculto** (`WebViewFetcher` en Swift) que carga el sitio, resuelve el reto y
+ejecuta las peticiones con `fetch()` en el contexto de la página (heredando cookies + huella TLS
+real de WebKit). El módulo Kotlin define la interfaz `WebFetcher` y enruta por ahí las fuentes
+protegidas. Las **imágenes** se bajan con `URLSession` (solo requieren `Referer`).
 
-### Levantar el servidor Suwayomi (requisito para Explorar)
-```bash
-mkdir -p ~/Suwayomi && cd ~/Suwayomi
-ASSET=$(curl -sL https://api.github.com/repos/Suwayomi/Suwayomi-Server/releases/latest \
-  | grep browser_download_url | grep -E 'Suwayomi-Server-.*\.jar"' | cut -d'"' -f4 | head -1)
-curl -L -o Suwayomi-Server.jar "$ASSET"
-/Users/b/Library/Java/JavaVirtualMachines/jbr-25.0.2/Contents/Home/bin/java -jar Suwayomi-Server.jar
-```
-Sirve en `http://localhost:4567`. En la app: **Más → Servidor Suwayomi** (URL por defecto ya
-apunta ahí). Las extensiones/fuentes se gestionan en la WebUI del servidor o por GraphQL.
+---
 
-Capas previas: **red** Ktor/Darwin + cimientos WKWebView (Fase 3); **persistencia** SQLite
-real con SQLDelight (Fase 2); modelos de dominio de Mihon (Fase 1).
+## Funcionalidades
+
+- **Biblioteca local** (SQLDelight, migraciones hasta **v8**): favoritos, **categorías** con
+  estanterías estilo Netflix (incl. **privadas** con palabra mágica + Face ID y **🔥 Tendencia**
+  por tiempo de lectura), expandir/contraer estanterías.
+- **Lector** paginado y **webtoon**: zoom persistente, filtros de color, prefetch, páginas dobles
+  (spreads), **hápticas graduales** al cambiar de capítulo (adelante y atrás), indicador
+  "Capítulo anterior", **scrubber lateral** en webtoon, mensajes de fin de capítulo.
+- **Explorar**: catálogo por fuente con filtros y orden, **búsqueda global en streaming**
+  (resultados por fuente conforme llegan, sigue en segundo plano al entrar a un manga), y
+  **fuente predeterminada** (⭐) para Explorar/Actualizaciones.
+- **Descargas** offline por capítulo/serie/selección, con reanudación y retención.
+- **Historial**, **Actualizaciones recientes** (caché + auto-refresco), **progreso por capítulo**,
+  marcar visto/no visto, marca **+18** (excluye de Historial/Actualizaciones), eliminar por
+  completo un manga de todas las tablas.
+- **Personalización**: acento dinámico, temas de fondo, patrones de emoji, partículas, Liquid
+  Glass, claro/oscuro/sistema, modo una mano, tarjeta coleccionable (giroscopio).
+- **Fuentes** (Preferencias): activar/desactivar por fuente o idioma, alerta de edad para +18.
+
+---
+
+## Estructura del proyecto
 
 ```
 mihon ios/
-├── README.md
 ├── settings.gradle.kts / build.gradle.kts / gradle.properties   # proyecto Gradle KMP
-├── gradlew + gradle/wrapper/                                     # Gradle 9.5.1
-├── shared/                          # ★ Módulo Kotlin Multiplatform (solo iOS por ahora)
-│   ├── build.gradle.kts             # targets iOS + plugin SQLDelight
+├── gradlew + gradle/wrapper/                                     # Gradle wrapper
+├── shared/                          # ★ Módulo Kotlin Multiplatform (solo target iOS)
+│   ├── build.gradle.kts             # targets iOS + Ktor + plugin SQLDelight
 │   └── src/
 │       ├── commonMain/
-│       │   ├── sqldelight/mihon/shared/database/   # mangas.sq, chapters.sq (esquema Mihon)
+│       │   ├── sqldelight/mihon/shared/database/   # esquema (.sq) + migraciones (.sqm, v→8)
 │       │   └── kotlin/mihon/shared/
-│       │       ├── MihonShared.kt        # fachada que consume Swift
-│       │       ├── Platform.kt           # expect platformName()
-│       │       ├── domain/model/         # Manga, Chapter, TriState, UpdateStrategy (reales)
-│       │       ├── domain/repository/    # LibraryRepository (interfaz)
-│       │       ├── database/             # adapters, DatabaseFactory (expect), seeder
-│       │       └── data/                 # DatabaseLibraryRepository (real) + SampleLibraryRepository (semilla)
-│       └── iosMain/kotlin/.../           # Platform.ios.kt (UIDevice) + DatabaseFactory.ios.kt (NativeSqliteDriver)
-└── iosApp/                         # App nativa iOS (SwiftUI)
-    ├── MihonIOS.xcodeproj           # incluye build-phase que ejecuta ./gradlew embedAndSign
+│       │       ├── MihonShared.kt              # fachada que consume Swift
+│       │       ├── source/                     # MangaSource + MangaDex/MangaPlus/Comick/MangaFire
+│       │       │   ├── SourceRegistry.kt       # registro de fuentes/idiomas
+│       │       │   └── WebFetcher.kt           # puente a WKWebView (Cloudflare)
+│       │       └── data/                       # repos: favoritos, categorías, historial,
+│       │                                       #   progreso, descargas, tiempo de lectura, nsfw…
+│       └── iosMain/kotlin/.../                 # Platform.ios.kt + driver SQLDelight nativo
+└── iosApp/                          # App nativa iOS (SwiftUI)
+    ├── Info.plist                   # CFBundleDisplayName = iMihon, Face ID
+    ├── MihonIOS.xcodeproj           # build-phase: ./gradlew embedAndSign del framework
     └── MihonIOS/
-        └── Models/MockData.swift    # ahora es un ADAPTADOR Kotlin→Swift (no datos hardcodeados)
-        ├── MihonIOSApp.swift        # @main  (≈ App.kt / MainActivity)
-        ├── ContentView.swift        # TabView raíz  (≈ HomeScreen.kt)
-        ├── DesignSystem/Theme.swift # colores, portada placeholder (≈ presentation-core)
-        ├── Models/                  # Manga, Chapter, MangaSource, MockData (≈ domain/model)
+        ├── MihonIOSApp.swift        # @main; registra el WebViewFetcher
+        ├── ContentView.swift        # TabView raíz (Biblioteca/Actualizaciones/Historial/Explorar/Preferencias)
+        ├── Models/                  # AppSettings, MockData (adaptador Kotlin→Swift)
+        ├── DesignSystem/            # Theme, AppTheme, ImageCache (descifrado XOR/barajado), Liquid Glass…
         └── Features/
-            ├── Library/             # ≈ LibraryTab + LibraryScreenModel
-            ├── Updates/             # ≈ UpdatesTab
-            ├── History/             # ≈ HistoryTab
-            ├── Browse/              # ≈ BrowseTab (fuentes + búsqueda global)
-            ├── More/                # ≈ MoreTab + ajustes
-            ├── MangaDetail/         # ≈ MangaScreen
-            └── Reader/              # ≈ ReaderActivity + viewers
+            ├── Library/             # estanterías, modo una mano
+            ├── Updates/ History/    # actualizaciones recientes / historial
+            ├── Browse/              # Explorar, búsqueda, detalle, WebViewFetcher, cromo
+            ├── More/                # Preferencias: Lectura, Personalización, Fuentes, Descargas
+            └── Reader/              # lector paginado + webtoon
 ```
 
-### Cómo abrir y ejecutar
-> Requiere **Xcode 16+**. La compilación del framework Kotlin la dispara Xcode
+---
+
+## Compilar y ejecutar
+
+> Requiere **Xcode 16+**, mínimo **iOS 17.0**. Gradle usa **JBR 25** vía `org.gradle.java.home`
+> en `gradle.properties` (OpenJDK 26 rompe Gradle/Kotlin). La primera build descarga
+> Kotlin/Native (~1 GB, una sola vez). La compilación del framework Kotlin la dispara Xcode
 > automáticamente (build-phase `./gradlew :shared:embedAndSignAppleFrameworkForXcode`).
-> Gradle usa **JBR 25** vía `org.gradle.java.home` en `gradle.properties` (OpenJDK 26 es
-> demasiado nuevo). La primera build descarga Kotlin/Native (~1 GB, una sola vez).
 
 ```bash
 open "iosApp/MihonIOS.xcodeproj"
 ```
-Selecciona un simulador de iPhone y pulsa ▶︎ (⌘R). Mínimo iOS 17.0.
+Selecciona un simulador (o un iPhone) y pulsa ▶︎ (⌘R).
 
 Compilar solo el framework desde terminal:
 ```bash
@@ -82,35 +105,10 @@ Compilar solo el framework desde terminal:
 
 ---
 
-## Hoja de ruta de migración
-
-| Fase | Objetivo | Reutiliza de Mihon |
-|------|----------|--------------------|
-| **0. Esqueleto SwiftUI** ✅ | Navegación + pantallas con mock | — |
-| **1. Módulo KMP `shared`** ✅ | Targets iOS + framework consumido por Xcode; modelos de dominio reales; datos servidos desde Kotlin | `domain/`, modelos |
-| **2. Persistencia** ✅ | SQLDelight + `native-driver` iOS; tablas mangas/chapters; BD sembrada y persistida | `data/` (.sq, mappers) |
-| **3. Red** ✅ | Ktor (motor Darwin) en commonMain; suspend→async en Swift; cimientos `WKWebView` | `source-api` (HttpSource) |
-| **4. Fuentes** ✅ | Backend **Suwayomi** (GraphQL): conexión, listar fuentes y explorar catálogo real (MangaFire) con portadas | `source-api`, `source-local` |
-| **5. Funcionalidad** 🚧 | ✅ detalle de fuente + capítulos reales + buscar + añadir a biblioteca + biblioteca desde servidor. Falta: descargas, historial, trackers | `domain/interactor`, trackers |
-| **6. Lector real** ✅ | Carga páginas del servidor (`fetchChapterPages`), modo paginado con zoom (pellizco/doble toque) y controles | `ui/reader` (lógica) |
-
-> Buscador, páginas del lector y catálogo online dependen de que la **red permita los dominios de las fuentes** (api.mangadex.org, etc.). En redes que los bloquean se muestra el error con "Reintentar"; el código es correcto y funciona en una red sin esos bloqueos. MangaDex ya está instalada en el servidor.
-
-### Decisión pendiente: fuentes online
-Las extensiones de Mihon son **APKs cargados dinámicamente** — imposible en iOS (App Store
-prohíbe cargar código). Opciones:
-- **(A) Backend tipo Tachidesk/Suwayomi** — un servidor ejecuta las extensiones; la app iOS
-  es cliente HTTP. Conserva el catálogo existente. *(recomendado)*
-- **(B) Solo fuente local + trackers** — lee CBZ/EPUB locales; legal y aprobable en App Store.
-- **(C) Fuentes nativas en el binario** — inviable a escala.
-
-Se resolverá al llegar a la Fase 4.
-
----
-
-## Bloqueos conocidos de portabilidad (de Mihon Android)
-- `android.webkit.WebView` → `WKWebView` (Cloudflare, motor JS).
-- SAF / `UniFile` (scoped storage) → `FileManager` (sandbox iOS).
-- `WorkManager` (tareas en background) → `BGTaskScheduler`.
-- Notificaciones, permisos, cookies → APIs nativas de iOS.
-- Carga dinámica de extensiones → ver "Decisión pendiente".
+## Notas de portabilidad (de Mihon Android)
+- `android.webkit.WebView` → `WKWebView` (usado para resolver Cloudflare en Comick/MangaFire).
+- Carga dinámica de extensiones (APK) → **reimplementación nativa** de cada fuente.
+- SAF / `UniFile` → `FileManager` (sandbox iOS). `WorkManager` → tareas iOS.
+- `@Throws(Exception::class)` es **obligatorio** en toda función Kotlin llamada desde Swift con
+  `try`/`await`: si no, una excepción aborta la app (SIGABRT) en vez de propagarse al `catch`.
+```
